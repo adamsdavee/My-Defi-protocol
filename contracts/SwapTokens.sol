@@ -5,12 +5,12 @@ pragma abicoder v2;
 import "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
 import "@uniswap/v3-periphery/contracts/libraries/TransferHelper.sol";
 
-contract SimpleSwap {
+contract SwapTokens {
     address constant SWAPROUTER02 = 0x3bFA4769FB09eefC5a80d6E87c3B9C650f7Ae48E;
     ISwapRouter public immutable swapRouter;
     address public constant DAI = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
     address public constant WETH9 = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
-    uint24 public constant feeTier = 3000;
+    uint24 public constant poolFee = 3000;
 
     constructor() {
         swapRouter = ISwapRouter(SWAPROUTER02);
@@ -18,12 +18,11 @@ contract SimpleSwap {
 
     // Use this for test
 
-    /// @notice swapTokenForToken swaps a fixed amount of tokenA for the maximum amount of tokenB.
-    /// @dev The calling address must approve this contract to spend its token for this function to succeed. As the amount of input token is variable,
-    /// the calling address will need to approve for a slightly higher amount, anticipating some variance.
-    /// @param amountOut The exact amount of tokenB to receive from the swap.
-    /// @param amountInMaximum The amount of DAI we are willing to spend to receive the specified amount of tokenB.
-    /// @return amountIn The amount of tokenA actually spent in the swap.
+    /**  @notice swapTokenForToken swaps a fixed amount of tokenA for the maximum amount of tokenB.
+        @dev The calling address must approve this contract to spend its token for this function to succeed. As the amount of input token is variable,
+        the calling address will need to approve for a slightly higher amount, anticipating some variance.
+        @param amountIn The exact amount of tokenB to receive from the swap.
+        @return amountOut The amount of tokenB received. */
     function swapTokenForToken(
         uint256 amountIn,
         address tokenA,
@@ -46,7 +45,7 @@ contract SimpleSwap {
             .ExactInputSingleParams({
                 tokenIn: tokenA,
                 tokenOut: tokenB,
-                fee: feeTier,
+                fee: poolFee,
                 recipient: msg.sender,
                 deadline: block.timestamp,
                 amountIn: amountIn,
