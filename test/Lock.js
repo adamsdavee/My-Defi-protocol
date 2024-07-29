@@ -1,126 +1,202 @@
-const {
-  time,
-  loadFixture,
-} = require("@nomicfoundation/hardhat-toolbox/network-helpers");
-const { anyValue } = require("@nomicfoundation/hardhat-chai-matchers/withArgs");
-const { expect } = require("chai");
+const { getNamedAccounts, deployments, ethers } = require("hardhat");
+const { assert, expect } = require("chai");
 
-describe("Lock", function () {
-  // We define a fixture to reuse the same setup in every test.
-  // We use loadFixture to run this setup once, snapshot that state,
-  // and reset Hardhat Network to that snapshot in every test.
-  async function deployOneYearLockFixture() {
-    const ONE_YEAR_IN_SECS = 365 * 24 * 60 * 60;
-    const ONE_GWEI = 1_000_000_000;
+describe("NftMarketplace", function () {
+  let factory, basicNft, player, deployer, accounts, cherry, apple;
+  const TOKEN_ID = 0;
+  const PRICE = ethers.parseEther("1");
 
-    const lockedAmount = ONE_GWEI;
-    const unlockTime = (await time.latest()) + ONE_YEAR_IN_SECS;
+  beforeEach(async function () {
+    accounts = await ethers.getSigners();
+    deployer = (await getNamedAccounts()).deployer;
+    player = accounts[1];
 
-    // Contracts are deployed using the first signer/account by default
-    const [owner, otherAccount] = await ethers.getSigners();
+    // await deployments.fixture(["all"]);
 
-    const Lock = await ethers.getContractFactory("Lock");
-    const lock = await Lock.deploy(unlockTime, { value: lockedAmount });
+    const fact = await deployments.get("Factory", deployer);
+    factory = await ethers.getContractAt("Factory", fact.address);
 
-    return { lock, unlockTime, lockedAmount, owner, otherAccount };
-  }
+    cherry = await deployments.get("CherryToken", deployer);
+    apple = await deployments.get("AppleToken", deployer);
 
-  describe("Deployment", function () {
-    it("Should set the right unlockTime", async function () {
-      const { lock, unlockTime } = await loadFixture(deployOneYearLockFixture);
-
-      expect(await lock.unlockTime()).to.equal(unlockTime);
-    });
-
-    it("Should set the right owner", async function () {
-      const { lock, owner } = await loadFixture(deployOneYearLockFixture);
-
-      expect(await lock.owner()).to.equal(owner.address);
-    });
-
-    it("Should receive and store the funds to lock", async function () {
-      const { lock, lockedAmount } = await loadFixture(
-        deployOneYearLockFixture
-      );
-
-      expect(await ethers.provider.getBalance(lock.target)).to.equal(
-        lockedAmount
-      );
-    });
-
-    it("Should fail if the unlockTime is not in the future", async function () {
-      // We don't use the fixture here because we want a different deployment
-      const latestTime = await time.latest();
-      const Lock = await ethers.getContractFactory("Lock");
-      await expect(Lock.deploy(latestTime, { value: 1 })).to.be.revertedWith(
-        "Unlock time should be in the future"
-      );
-    });
+    console.log("Done!");
   });
 
-  describe("Withdrawals", function () {
-    describe("Validations", function () {
-      it("Should revert with the right error if called too soon", async function () {
-        const { lock } = await loadFixture(deployOneYearLockFixture);
-
-        await expect(lock.withdraw()).to.be.revertedWith(
-          "You can't withdraw yet"
-        );
-      });
-
-      it("Should revert with the right error if called from another account", async function () {
-        const { lock, unlockTime, otherAccount } = await loadFixture(
-          deployOneYearLockFixture
-        );
-
-        // We can increase the time in Hardhat Network
-        await time.increaseTo(unlockTime);
-
-        // We use lock.connect() to send a transaction from another account
-        await expect(lock.connect(otherAccount).withdraw()).to.be.revertedWith(
-          "You aren't the owner"
-        );
-      });
-
-      it("Shouldn't fail if the unlockTime has arrived and the owner calls it", async function () {
-        const { lock, unlockTime } = await loadFixture(
-          deployOneYearLockFixture
-        );
-
-        // Transactions are sent using the first signer by default
-        await time.increaseTo(unlockTime);
-
-        await expect(lock.withdraw()).not.to.be.reverted;
-      });
+  describe("Test Factory", function () {
+    it("checks if its creates pair", async function () {
+      const pair = await factory.createPair(cherry.address, apple.address);
+      const pairLength = await factory.allPairsLength();
+      console.log(pairLength);
+      const pairAddress = await factory.getPairAddress(
+        cherry.address,
+        apple.address
+      );
+      console.log(pairAddress);
+      console.log(pairLength);
+      console.log(pair.address);
+      console.log(pair);
     });
+    // it("reverts if item has been listed", async function () {
+    //   await nftMarketplace.listItem(basicNft.target, TOKEN_ID, PRICE);
+    //   const error = `NftMarketplace__AlreadyListed("${basicNft.target}", ${TOKEN_ID})`;
+    //   console.log(error);
 
-    describe("Events", function () {
-      it("Should emit an event on withdrawals", async function () {
-        const { lock, unlockTime, lockedAmount } = await loadFixture(
-          deployOneYearLockFixture
-        );
-
-        await time.increaseTo(unlockTime);
-
-        await expect(lock.withdraw())
-          .to.emit(lock, "Withdrawal")
-          .withArgs(lockedAmount, anyValue); // We accept any value as `when` arg
-      });
-    });
-
-    describe("Transfers", function () {
-      it("Should transfer the funds to the owner", async function () {
-        const { lock, unlockTime, lockedAmount, owner } = await loadFixture(
-          deployOneYearLockFixture
-        );
-
-        await time.increaseTo(unlockTime);
-
-        await expect(lock.withdraw()).to.changeEtherBalances(
-          [owner, lock],
-          [lockedAmount, -lockedAmount]
-        );
-      });
-    });
+    //   expect(
+    //     await nftMarketplace.listItem(basicNft.target, TOKEN_ID, PRICE)
+    //   ).to.be.revertedWithCustomError(nftMarketplace, error);
+    // });
+    // it("allows only owner to list the NFT", async function () {
+    //   const newContract = await nftMarketplace.connect(player);
+    //   expect(
+    //     await newContract.listItem(basicNft.target, TOKEN_ID, PRICE)
+    //   ).to.be.revertedWithCustomError(newContract, "NftMarketplace__NotOwner");
+    // });
+    // it("needs approval to list items", async function () {
+    //   await basicNft.approve(player.address, TOKEN_ID);
+    //   expect(
+    //     await nftMarketplace.listItem(basicNft.target, TOKEN_ID, PRICE)
+    //   ).to.be.revertedWithCustomError(
+    //     nftMarketplace,
+    //     "NftMarketplace__NotApprovedForMarketplace"
+    //   );
+    // });
+    // it("updates listing with seller and price", async function () {
+    //   await basicNft.approve(nftMarketplace.target, TOKEN_ID);
+    //   await nftMarketplace.listItem(basicNft.target, TOKEN_ID, PRICE);
+    //   const listing = await nftMarketplace.getListing(
+    //     basicNft.target,
+    //     TOKEN_ID
+    //   );
+    //   assert(listing.price == PRICE);
+    //   assert(listing.seller == deployer);
+    // });
+    // it("reverts if price is <= 0", async function () {
+    //   expect(
+    //     await nftMarketplace.listItem(basicNft.target, TOKEN_ID, 0)
+    //   ).to.be.revertedWithCustomError(
+    //     nftMarketplace,
+    //     "NftMarketplace__PriceMustBeAboveZero"
+    //   );
+    // });
   });
+
+  // describe("cancelListing", function () {
+  //   it("reverts if there is no listing", async function () {
+  //     const error = `NftMarketplace__AlreadyListed("${basicNft.target}", ${TOKEN_ID})`;
+  //     expect(
+  //       await nftMarketplace.cancelListing(basicNft.target, TOKEN_ID)
+  //     ).to.be.revertedWithCustomError(nftMarketplace, error);
+  //   });
+  //   it("reverts if anyone but the owner tries to call it", async function () {
+  //     await nftMarketplace.listItem(basicNft.target, TOKEN_ID, PRICE);
+  //     const newContract = await nftMarketplace.connect(player);
+  //     expect(
+  //       await newContract.cancelListing(basicNft.target, TOKEN_ID)
+  //     ).to.be.revertedWithCustomError(newContract, "NftMarketplace__NotOwner");
+  //   });
+  //   it("emits an event and removes listing", async function () {
+  //     await nftMarketplace.listItem(basicNft.target, TOKEN_ID, PRICE);
+  //     expect(
+  //       await nftMarketplace.cancelListing(basicNft.target, TOKEN_ID)
+  //     ).to.emit(nftMarketplace, "ItemCanceled");
+  //     const listing = await nftMarketplace.getListing(
+  //       basicNft.target,
+  //       TOKEN_ID
+  //     );
+  //     assert(listing.price == 0);
+  //   });
+  // });
+
+  // describe("buyItem", function () {
+  //   it("reverts if the item isn't listed", async function () {
+  //     const error = `NftMarketplace__AlreadyListed("${basicNft.target}", ${TOKEN_ID})`;
+  //     expect(
+  //       await nftMarketplace.buyItem(basicNft.target, TOKEN_ID)
+  //     ).to.be.revertedWithCustomError(nftMarketplace, error);
+  //   });
+  //   it("reverts if price is not met", async function () {
+  //     const error = `NftMarketplace__PriceNotMet("${basicNft.target}", ${TOKEN_ID}, ${PRICE})`;
+  //     await nftMarketplace.listItem(basicNft.target, TOKEN_ID, PRICE);
+  //     expect(
+  //       await nftMarketplace.buyItem(basicNft.target, TOKEN_ID)
+  //     ).to.be.revertedWithCustomError(nftMarketplace, error);
+  //   });
+  //   it("transfers nft to the buyer and updates internal proceeds records", async function () {
+  //     await nftMarketplace.listItem(basicNft.target, TOKEN_ID, PRICE);
+  //     const newUser = await nftMarketplace.connect(player);
+  //     expect(
+  //       await newUser.buyItem(basicNft.target, TOKEN_ID, { value: PRICE })
+  //     ).to.emit(newUser, "ItemBought");
+  //     const proceeds = await newUser.getProceeds(deployer);
+  //     const owner = await basicNft.ownerOf(TOKEN_ID);
+  //     assert.equal(proceeds, PRICE);
+  //     assert.equal(owner, player.address);
+  //   });
+  // });
+
+  // describe("Update listing", function () {
+  //   it("must be owner and listed", async function () {
+  //     const error = ` NftMarketplace__NotListed("${basicNft.target}, ${TOKEN_ID})`;
+  //     expect(
+  //       await nftMarketplace.updateListing(basicNft.target, TOKEN_ID, PRICE)
+  //     ).to.be.revertedWith(newUser, error);
+  //     await nftMarketplace.listItem(basicNft.target, TOKEN_ID, PRICE);
+  //     const newUser = nftMarketplace.connect(player);
+  //     expect(
+  //       await newUser.updateListing(basicNft.target, TOKEN_ID, PRICE)
+  //     ).to.be.revertedWithCustomError(newUser, "NftMarketplace__NotOwner");
+  //   });
+  //   it("reverts if new price is <= 0", async function () {
+  //     await nftMarketplace.listItem(basicNft.target, TOKEN_ID, PRICE);
+  //     expect(
+  //       await nftMarketplace.updateListing(basicNft.target, TOKEN_ID, 0)
+  //     ).to.be.revertedWithCustomError(
+  //       nftMarketplace,
+  //       "NftMarketplace__PriceMustBeAboveZero"
+  //     );
+  //   });
+  //   it("updates price of the item", async function () {
+  //     await nftMarketplace.listItem(basicNft.target, TOKEN_ID, PRICE);
+  //     const updatedPrice = ethers.parseEther("0.6");
+  //     await nftMarketplace.updateListing(
+  //       basicNft.target,
+  //       TOKEN_ID,
+  //       updatedPrice
+  //     );
+
+  //     const listing = await nftMarketplace.getListing(
+  //       basicNft.target,
+  //       TOKEN_ID
+  //     );
+  //     assert(listing.price == updatedPrice);
+  //   });
+  // });
+
+  // describe("Withdraw proceeds", function () {
+  //   it.only("doesn't allow 0 proceeds withdrawals", async function () {
+  //     expect(
+  //       await nftMarketplace.withdrawProceeds()
+  //     ).to.be.revertedWithCustomError(
+  //       nftMarketplace,
+  //       "NftMarketplace__NoProceeds"
+  //     );
+  //   });
+  //   it.only("withdraw proceeds", async function () {
+  //     await nftMarketplace.listItem(basicNft.target, TOKEN_ID, PRICE);
+  //     const buyer = nftMarketplace.connect(player);
+
+  //     expect(
+  //       await buyer.buyItem(basicNft.target, TOKEN_ID, { value: PRICE })
+  //     ).to.emit(buyer, "ItemBought");
+
+  //     await nftMarketplace.connect(accounts[0]);
+  //     const proceeds = await nftMarketplace.getProceeds(deployer);
+  //     console.log(proceeds);
+  //     await nftMarketplace.withdrawProceeds();
+  //     const newProceeds = await nftMarketplace.getProceeds(deployer);
+  //     console.log(newProceeds);
+  //     const accountBalance = await ethers.balanceOf(accounts[0].address);
+  //     console.log(accountBalance);
+  //   });
+  // });
 });
