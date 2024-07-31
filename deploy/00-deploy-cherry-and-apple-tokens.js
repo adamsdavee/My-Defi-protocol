@@ -8,6 +8,8 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
     args: [],
     log: true,
   });
+  const cherry = await ethers.getContractAt("CherryToken", cherryToken.address);
+  await cherry.mint(deployer, 300000);
   log(`Contract deployed at: ${cherryToken.address}`);
 
   log("--------------------------------------------");
@@ -17,6 +19,9 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
     args: [],
     log: true,
   });
+  const apple = await ethers.getContractAt("AppleToken", appleToken.address);
+
+  await apple.mint(deployer, 300000);
   log(`Contract deployed at: ${appleToken.address}`);
 
   //   if (!(chainId == 31337) && process.env.ETHERSCAN_API_KEY) {

@@ -2,7 +2,7 @@ const { getNamedAccounts, deployments, ethers } = require("hardhat");
 const { assert, expect } = require("chai");
 
 describe("NftMarketplace", function () {
-  let factory, basicNft, player, deployer, accounts, cherry, apple;
+  let factory, basicNft, player, deployer, accounts, cherry, apple, router;
   const TOKEN_ID = 0;
   const PRICE = ethers.parseEther("1");
 
@@ -15,6 +15,10 @@ describe("NftMarketplace", function () {
 
     const fact = await deployments.get("Factory", deployer);
     factory = await ethers.getContractAt("Factory", fact.address);
+
+    const rout = await deployments.get("Router", deployer);
+    router = await ethers.getContractAt("Router", rout.address);
+    console.log(rout.address);
 
     cherry = await deployments.get("CherryToken", deployer);
     apple = await deployments.get("AppleToken", deployer);
@@ -31,9 +35,21 @@ describe("NftMarketplace", function () {
         cherry.address,
         apple.address
       );
+      // console.log(pair);
       console.log(pairAddress);
       console.log(pairLength);
-      console.log(pair.address);
+    });
+    it("checks if its adds liquidity", async function () {
+      const pair = await router.addLiquidity(
+        cherry.address,
+        apple.address,
+        12,
+        11,
+        11,
+        11,
+        deployer,
+        1200000000000
+      );
       console.log(pair);
     });
     // it("reverts if item has been listed", async function () {
