@@ -20,7 +20,6 @@ contract MiniUniswapFactory is ERC20 {
     uint256 private reserveB;
 
     uint256 private totalLpShares;
-    uint256 public kLast;
 
     constructor() ERC20("LiquidityTokens", "LP") {
         factory = msg.sender;
@@ -61,8 +60,6 @@ contract MiniUniswapFactory is ERC20 {
         _mint(_to, liquidity);
         _update(_balanceA, _balanceB);
 
-        if (feeOn) kLast = _reserveA * _reserveB; // reserve0 and reserve1 are up-to-date
-
         emit Mint(msg.sender, depositOfTokenA, depositOfTokenB);
     }
 
@@ -92,6 +89,8 @@ contract MiniUniswapFactory is ERC20 {
 
         emit Burn(msg.sender, amount0, amountB, to);
     }
+
+    function swap() external {}
 
     function getTokenReserves() external returns (uint256, uint256) {
         return (reserveA, reserveB);
