@@ -6,13 +6,14 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "./Math.sol";
 
 error MiniUniswapFactory__NotOwner();
+error MiniUniswapFactory__InsufficientLiquidity();
 
-contract MiniUniswapFactory is ERC20 {
+contract MiniUniswapPool is ERC20 {
     using Math for uint256;
 
     address private immutable factory;
-    address private immutable tokenA;
-    address private immutable tokenB;
+    address private tokenA;
+    address private tokenB;
 
     uint256 public constant MINIMUM_LIQUIDITY = 10 ** 3;
 
@@ -33,16 +34,16 @@ contract MiniUniswapFactory is ERC20 {
     }
 
     function _update(uint256 _balanceA, uint256 _balanceB) private {
-        reserveA = _reserveA;
-        reserveB = _reserveB;
+        reserveA = _balanceA;
+        reserveB = _balanceB;
     }
 
-    function mint(address _to, bool feeOn) external {
-        (uint256 _reserveA, uint256 _reserveB, ) = getReserves();
+    function mint(address _to) external returns (uint256 liquidity) {
+        (uint256 _reserveA, uint256 _reserveB) = getTokenReserves();
         uint256 _balanceA = IERC20(tokenA).balanceOf(address(this));
         uint256 _balanceB = IERC20(tokenB).balanceOf(address(this));
-        uint256 depositOfTokenA = _balanceA - _reserve0;
-        uint256 depositOfTokenB = _balanceB - _reserve1;
+        uint256 depositOfTokenA = _balanceA - _reserveA;
+        uint256 depositOfTokenB = _balanceB - _reserveB;
 
         uint256 _totalSupply = totalSupply();
         if (_totalSupply == 0) {
@@ -60,14 +61,14 @@ contract MiniUniswapFactory is ERC20 {
         _mint(_to, liquidity);
         _update(_balanceA, _balanceB);
 
-        emit Mint(msg.sender, depositOfTokenA, depositOfTokenB);
+        // emit Mint(msg.sender, depositOfTokenA, depositOfTokenB);
     }
 
     // BURN
     function liquidateLpTokens(
         address to
-    ) external lock returns (uint amount0, uint amount1) {
-        (uint256 _reserve0, uint256 _reserve1, ) = getReserves(); // gas savings
+    ) external returns (uint256 amountA, uint256 amountB) {
+        (uint256 _reserve0, uint256 _reserve1) = getTokenReserves(); // gas savings
         address _tokenA = tokenA; // gas savings
         address _tokenB = tokenB; // gas savings
         uint balanceA = IERC20(_tokenA).balanceOf(address(this));
@@ -78,7 +79,7 @@ contract MiniUniswapFactory is ERC20 {
         amountA = (liquidity * balanceA) / _totalSupply; // using balances ensures pro-rata distribution
         amountB = (liquidity * balanceB) / _totalSupply; // using balances ensures pro-rata distribution
         if (amountA <= 0 && amountB <= 0)
-            revert MiniUniswapFactory__InsufficientLiquididty();
+            revert MiniUniswapFactory__InsufficientLiquidity();
         _burn(address(this), liquidity);
         IERC20(_tokenA).transfer(to, amountA);
         IERC20(_tokenB).transfer(to, amountB);
@@ -87,17 +88,17 @@ contract MiniUniswapFactory is ERC20 {
 
         _update(balanceA, balanceB);
 
-        emit Burn(msg.sender, amount0, amountB, to);
+        // emit Burn(msg.sender, amount0, amountB, to);
     }
 
     function swap() external {}
 
-    function getTokenReserves() external returns (uint256, uint256) {
+    function getTokenReserves() public returns (uint256, uint256) {
         return (reserveA, reserveB);
     }
 
     // force reserves to match balances
-    function sync() external lock {
+    function sync() external {
         _update(
             IERC20(tokenA).balanceOf(address(this)),
             IERC20(tokenB).balanceOf(address(this))

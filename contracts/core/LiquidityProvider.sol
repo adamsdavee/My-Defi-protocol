@@ -6,9 +6,9 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "./interfaces/IFactory.sol";
 import "./interfaces/IPool.sol";
 
-error MiniUniswapFactory__NotOwner();
+error LiquidityProvider__InsufficientAmount();
 
-contract MiniUniswapLiquidityProvider {
+contract LiquidityProvider {
     address private immutable factoryAddress;
 
     constructor(address _factoryAddress) {
@@ -19,7 +19,7 @@ contract MiniUniswapLiquidityProvider {
         address _tokenA,
         address _tokenB,
         uint256 amountOfTokenADesired,
-        uint256 amountOfTokenBDeired,
+        uint256 amountOfTokenBDesired,
         uint256 minTokenA,
         uint256 minTokenB
     ) external returns (uint256 amountA, uint256 amountB) {
@@ -33,17 +33,28 @@ contract MiniUniswapLiquidityProvider {
         (uint256 reserveA, uint256 reserveB) = IPool(pair).getReserves();
 
         if (reserveA == 0 && reserveB == 0) {
-            (amountA, amountB) = (
-                amountOfTokensADesired,
-                amountOfTokenBDesired
-            );
+            (amountA, amountB) = (amountOfTokenADesired, amountOfTokenBDesired);
         } else {
             uint256 optimalAmountOfTokenB = quote(
                 amountOfTokenADesired,
                 reserveA,
                 reserveB
             );
-            if (optimalAmountOfTokenB <= amountOfTokenBDesired) {}
+            if (optimalAmountOfTokenB <= amountOfTokenBDesired) {
+                if (optimalAmountOfTokenB < minTokenB)
+                    revert LiquidityProvider__InsufficientAmount();
+                (amountA, amountB) = (amountOfTokenADesired, amountBOptimal);
+            } else {
+                uint256 amountAOptimal = quote(
+                    amountOfTokenBDesired,
+                    reserveB,
+                    reserveA
+                );
+                assert(amountAOptimal <= amountADesired);
+                if (amountAOptimal < minTokenA)
+                    revert LiquidityProvider__InsufficientAmount();
+                (amountA, amountB) = (amountAOptimal, amountOfTokenBDesired);
+            }
         }
     }
 
