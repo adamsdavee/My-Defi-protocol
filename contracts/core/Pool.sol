@@ -8,7 +8,7 @@ import "./Math.sol";
 error MiniUniswapFactory__NotOwner();
 error MiniUniswapFactory__InsufficientLiquidity();
 
-contract MiniUniswapPool is ERC20 {
+contract Pool is ERC20 {
     using Math for uint256;
 
     address private immutable factory;
