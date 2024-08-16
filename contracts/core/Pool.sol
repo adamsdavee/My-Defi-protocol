@@ -5,8 +5,9 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "./Math.sol";
 
-error MiniUniswapFactory__NotOwner();
-error MiniUniswapFactory__InsufficientLiquidity();
+error PoolFactory__NotOwner();
+error PoolFactory__InsufficientLiquidity();
+error PoolFactory__InsufficientFunds();
 
 contract Pool is ERC20 {
     using Math for uint256;
@@ -27,7 +28,7 @@ contract Pool is ERC20 {
     }
 
     function init(address _tokenA, address _tokenB) external {
-        if (factory != msg.sender) revert MiniUniswapFactory__NotOwner();
+        if (factory != msg.sender) revert PoolFactory__NotOwner();
 
         tokenA = _tokenA;
         tokenB = _tokenB;
@@ -57,7 +58,7 @@ contract Pool is ERC20 {
                 (depositOfTokenB * _totalSupply) / _reserveB
             );
         }
-        if (liquidity <= 0) revert MiniUniswapFactory__InsufficientLiquidity();
+        if (liquidity <= 0) revert PoolFactory__InsufficientLiquidity();
         _mint(_to, liquidity);
         _update(_balanceA, _balanceB);
 
@@ -79,7 +80,7 @@ contract Pool is ERC20 {
         amountA = (liquidity * balanceA) / _totalSupply; // using balances ensures pro-rata distribution
         amountB = (liquidity * balanceB) / _totalSupply; // using balances ensures pro-rata distribution
         if (amountA <= 0 && amountB <= 0)
-            revert MiniUniswapFactory__InsufficientLiquidity();
+            revert PoolFactory__InsufficientLiquidity();
         _burn(address(this), liquidity);
         IERC20(_tokenA).transfer(to, amountA);
         IERC20(_tokenB).transfer(to, amountB);
@@ -91,9 +92,31 @@ contract Pool is ERC20 {
         // emit Burn(msg.sender, amount0, amountB, to);
     }
 
-    function swap() external {}
+    function swap(
+        uint256 amount0Out,
+        uint256 amount1Out,
+        address to /**bytes calldata data */
+    ) external {
+        if (amount0Out <= 0 && amount1Out <= 0)
+            revert PoolFactory__InsufficientFunds();
+        (uint256 _reserve0, uint256 _reserve1) = getTokenReserves();
+        if (amount0Out < _reserve0 || amount1Out < _reserve1)
+            revert PoolFactory__InsufficientLiquidity();
+        uint256 balanceA;
+        uint256 balanceB;
+        {
+            address _tokenA = tokenA;
+            address _tokenB = tokenB;
+            if (amount0Out > 0) IERC20(_tokenA).transfer(to, amount0Out);
+            if (amount1Out > 0) IERC20(_tokenB).transfer(to, amount1Out);
+            balanceA = IERC20(_tokenA).balanceOf(address(this));
+            balanceB = IERC20(_tokenB).balanceOf(address(this));
+        }
 
-    function getTokenReserves() public returns (uint256, uint256) {
+        _update(balanceA, balanceB);
+    }
+
+    function getTokenReserves() public view returns (uint256, uint256) {
         return (reserveA, reserveB);
     }
 

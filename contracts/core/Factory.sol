@@ -51,6 +51,13 @@ contract PoolFactory {
         emit PoolCreated(token0, token1, poolAddress);
     }
 
+    function getTokenPairs(
+        address _tokenA,
+        address _tokenB
+    ) external view returns (address) {
+        return getPairs[_tokenA][_tokenB];
+    }
+
     function setFeeReceiver(address _feeReceiver) external {
         checkIfSetter();
 
