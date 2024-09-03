@@ -51,7 +51,7 @@ contract Pool is ERC20 {
             liquidity =
                 Math.sqrt(depositOfTokenA * depositOfTokenB) -
                 (MINIMUM_LIQUIDITY);
-            _mint(address(0), MINIMUM_LIQUIDITY); // permanently lock the first MINIMUM_LIQUIDITY tokens to avoid the pool being drained
+            _mint(address(1), MINIMUM_LIQUIDITY); // permanently lock the first MINIMUM_LIQUIDITY tokens to avoid the pool being drained
         } else {
             liquidity = Math.min(
                 (depositOfTokenA * _totalSupply) / _reserveA,
@@ -100,7 +100,7 @@ contract Pool is ERC20 {
         if (amount0Out <= 0 && amount1Out <= 0)
             revert PoolFactory__InsufficientFunds();
         (uint256 _reserve0, uint256 _reserve1) = getTokenReserves();
-        if (amount0Out < _reserve0 || amount1Out < _reserve1)
+        if (amount0Out > _reserve0 || amount1Out > _reserve1)
             revert PoolFactory__InsufficientLiquidity();
         uint256 balanceA;
         uint256 balanceB;

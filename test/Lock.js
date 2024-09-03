@@ -2,7 +2,17 @@ const { getNamedAccounts, deployments, ethers } = require("hardhat");
 const { assert, expect } = require("chai");
 
 describe("NftMarketplace", function () {
-  let factory, basicNft, player, deployer, accounts, cherry, apple, router;
+  let factory,
+    basicNft,
+    player,
+    deployer,
+    accounts,
+    cherry,
+    apple,
+    router,
+    cherryContract,
+    appleContract,
+    rout;
   const TOKEN_ID = 0;
   const PRICE = ethers.parseEther("1");
 
@@ -13,44 +23,97 @@ describe("NftMarketplace", function () {
 
     // await deployments.fixture(["all"]);
 
-    const fact = await deployments.get("Factory", deployer);
-    factory = await ethers.getContractAt("Factory", fact.address);
+    const fact = await deployments.get("PoolFactory", deployer);
+    factory = await ethers.getContractAt("PoolFactory", fact.address);
 
-    const rout = await deployments.get("Router", deployer);
-    router = await ethers.getContractAt("Router", rout.address);
-    console.log(rout.address);
+    rout = await deployments.get("LiquidityProvider", deployer);
+    router = await ethers.getContractAt("LiquidityProvider", rout.address);
+    // console.log(rout.address);
 
     cherry = await deployments.get("CherryToken", deployer);
+    cherryContract = await ethers.getContractAt("CherryToken", cherry.address);
     apple = await deployments.get("AppleToken", deployer);
+    appleContract = await ethers.getContractAt("AppleToken", apple.address);
 
+    console.log(await cherryContract.balanceOf(deployer));
+    await cherryContract.approve(rout.address, ethers.parseEther("10"));
+    await appleContract.approve(rout.address, ethers.parseEther("10"));
+    console.log(await cherryContract.allowance(deployer, rout.address));
+    console.log(await appleContract.allowance(deployer, rout.address));
     console.log("Done!");
   });
 
   describe("Test Factory", function () {
     it("checks if its creates pair", async function () {
-      const pair = await factory.createPair(cherry.address, apple.address);
-      const pairLength = await factory.allPairsLength();
-      console.log(pairLength);
-      const pairAddress = await factory.getPairAddress(
+      const pairAddress = await factory.getTokenPairs(
         cherry.address,
         apple.address
       );
       // console.log(pair);
       console.log(pairAddress);
-      console.log(pairLength);
+      const pair = await factory.createPool(cherry.address, apple.address);
+      // const pairLength = await factory.allTokenPairs();
+      // console.log(pairLength);
+      // console.log(await cherryContract.balanceOf(deployer));
+      // console.log(pairLength);
     });
     it("checks if its adds liquidity", async function () {
+      console.log("heyy");
+      console.log(await appleContract.balanceOf(rout.address));
+      console.log(await appleContract.balanceOf(rout.address));
+      console.log(await cherryContract.balanceOf(rout.address));
       const pair = await router.addLiquidity(
         cherry.address,
         apple.address,
-        12,
-        11,
-        11,
-        11,
-        deployer,
-        1200000000000
+        ethers.parseEther("1.5"),
+        ethers.parseEther("1"),
+        ethers.parseEther(".9"),
+        ethers.parseEther("1.3")
       );
       console.log(pair);
+    });
+
+    it.only("swaps", async function () {
+      console.log("Hiiiiiiii");
+      const pairAddress = await factory.getTokenPairs(
+        cherry.address,
+        apple.address
+      );
+      // console.log(pair);
+      console.log(pairAddress);
+      // console.log(await cherryContract.balanceOf(pairAddress));
+      // console.log(await appleContract.balanceOf(pairAddress));
+      // const pair = await router.addLiquidity(
+      //   cherry.address,
+      //   apple.address,
+      //   ethers.parseEther("4"),
+      //   ethers.parseEther("4"),
+      //   ethers.parseEther("3.8"),
+      //   ethers.parseEther("3.8")
+      // );
+      // console.log(pair);
+      console.log(await cherryContract.balanceOf(pairAddress));
+      console.log(await appleContract.balanceOf(pairAddress));
+      console.log("I made it here");
+      // console.log(pair);
+      console.log("Getting amounts.....");
+      const path = [apple.address, cherry.address];
+      const amountOut = await router.getAmountsOut(
+        pairAddress,
+        ethers.parseEther(".4"),
+        path
+      );
+      console.log(amountOut);
+
+      const tokenOut = await router.swapExactTokensForTokens(
+        ethers.parseEther(".4"),
+        ethers.parseEther(".1"),
+        path
+      );
+      // console.log(tokenOut);
+      console.log("Sappedddd");
+      console.log(await cherryContract.balanceOf(pairAddress));
+      console.log(await appleContract.balanceOf(pairAddress));
     });
     // it("reverts if item has been listed", async function () {
     //   await nftMarketplace.listItem(basicNft.target, TOKEN_ID, PRICE);

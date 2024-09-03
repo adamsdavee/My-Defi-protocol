@@ -9,7 +9,7 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
     log: true,
   });
   const cherry = await ethers.getContractAt("CherryToken", cherryToken.address);
-  await cherry.mint(deployer, 300000);
+  await cherry.mint(ethers.parseEther("30"));
   log(`Contract deployed at: ${cherryToken.address}`);
 
   log("--------------------------------------------");
@@ -21,8 +21,20 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
   });
   const apple = await ethers.getContractAt("AppleToken", appleToken.address);
 
-  await apple.mint(deployer, 300000);
+  await apple.mint(ethers.parseEther("30"));
   log(`Contract deployed at: ${appleToken.address}`);
+
+  // log("Deploying contract..................");
+  // const poolToken = await deploy("Pool", {
+  //   from: deployer,
+  //   args: [],
+  //   log: true,
+  // });
+  // const pool = await ethers.getContractAt("Pool", poolToken.address);
+
+  // // await pool.init(cherryToken.address, appleToken.address);
+  // await pool.mint(deployer);
+  // log(`Contract deployed at: ${poolToken.address}`);
 
   //   if (!(chainId == 31337) && process.env.ETHERSCAN_API_KEY) {
   //     //verify

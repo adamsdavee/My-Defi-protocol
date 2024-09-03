@@ -44,6 +44,8 @@ contract PoolFactory {
             poolAddress := create2(0, add(bytecode, 32), mload(bytecode), salt)
         }
 
+        Pool(poolAddress).init(tokenA, tokenB);
+
         getPairs[token0][token1] = poolAddress;
         getPairs[token1][token0] = poolAddress;
         allPairs.push(poolAddress);

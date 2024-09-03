@@ -3,9 +3,9 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
   const { deployer } = await getNamedAccounts();
 
   log("Deploying contract..................");
-  const factory = await deploy("Factory", {
+  const factory = await deploy("PoolFactory", {
     from: deployer,
-    args: ["0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2"],
+    args: [deployer],
     log: true,
   });
   log(`Contract deployed at: ${factory.address}`);
