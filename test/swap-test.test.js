@@ -3,8 +3,6 @@ const { assert, expect } = require("chai");
 
 describe("NftMarketplace", function () {
   let factory,
-    basicNft,
-    player,
     deployer,
     accounts,
     cherry,
@@ -13,8 +11,6 @@ describe("NftMarketplace", function () {
     cherryContract,
     appleContract,
     rout;
-  const TOKEN_ID = 0;
-  const PRICE = ethers.parseEther("1");
 
   beforeEach(async function () {
     accounts = await ethers.getSigners();
